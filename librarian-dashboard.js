@@ -148,31 +148,40 @@ async function loadBorrowedBooks() {
     showToast("Error loading borrowed books: " + error.message, "error");
   }
 }
-
 async function loadReservedBooks() {
   try {
-    const q = query(collection(db, "books"));
+    const q = query(
+      collection(db, "books"),
+      where("reservedBy", "!=", []), // This will find books where reservedBy is not empty
+      orderBy("reservedBy") // Need to order by the field we're filtering on
+    );
+    
     const snapshot = await getDocs(q);
     const booksList = document.getElementById("reservedBooksList");
     booksList.innerHTML = "";
 
-    const reservedBooks = snapshot.docs.filter(docSnap => {
-      const data = docSnap.data();
-      return Array.isArray(data.reservedBy) && data.reservedBy.length > 0;
-    });
-
-    if (reservedBooks.length === 0) {
+    if (snapshot.empty) {
       booksList.innerHTML = `<div class="empty-state"><i class="fas fa-clock"></i><h3>No Reserved Books</h3><p>There are currently no reserved books.</p></div>`;
       return;
     }
 
-    for (const docSnap of reservedBooks) {
+    for (const docSnap of snapshot.docs) {
       const book = { id: docSnap.id, ...docSnap.data() };
       const reservers = [];
-      for (const userId of book.reservedBy) {
-        const userSnap = await getDoc(doc(db, "users", userId));
-        reservers.push(userSnap.exists() ? userSnap.data().email : userId);
+      
+      // Check if reservedBy exists and is an array
+      if (book.reservedBy && Array.isArray(book.reservedBy)) {
+        for (const userId of book.reservedBy) {
+          try {
+            const userSnap = await getDoc(doc(db, "users", userId));
+            reservers.push(userSnap.exists() ? userSnap.data().email : userId);
+          } catch (error) {
+            console.error(`Error fetching user ${userId}:`, error);
+            reservers.push(userId); // Fallback to just showing the user ID
+          }
+        }
       }
+      
       renderBookCard(book, "reservedBooksList", reservers.join(", "));
     }
   } catch (error) {
@@ -180,6 +189,7 @@ async function loadReservedBooks() {
     showToast("Error loading reserved books: " + error.message, "error");
   }
 }
+
 
 function renderBookCard(book, targetList, additionalInfo = null) {
   const booksList = document.getElementById(targetList);
