@@ -580,31 +580,29 @@ function renderBookCard(book, targetList) {
 
   booksList.appendChild(card);
 
-  // In the renderBookCard function:
-card.querySelectorAll(".btn").forEach(btn => {
-  btn.addEventListener("click", async (e) => {
-    // Get the book ID from the card's dataset instead of the button
-    const card = e.target.closest('.book-card');
-    const bookId = card.dataset.bookId;
-    
-    const action = e.currentTarget.classList.contains("borrow") ? "borrow" :
-      e.currentTarget.classList.contains("reserve") ? "reserve" :
-      e.currentTarget.classList.contains("return") ? "return" :
-      e.currentTarget.classList.contains("cancel-reservation") ? "cancel" : null;
+  card.querySelectorAll(".btn").forEach(btn => {
+    btn.addEventListener("click", async (e) => {
+      const bookId = e.currentTarget.getAttribute("data-id");
+      const action = e.currentTarget.classList.contains("borrow") ? "borrow" :
+        e.currentTarget.classList.contains("reserve") ? "reserve" :
+        e.currentTarget.classList.contains("return") ? "return" :
+        e.currentTarget.classList.contains("cancel-reservation") ? "cancel" : null;
 
-    try {
-      if (action === "borrow") {
-        if (!openModal(bookId)) {
-          showToast("Could not initiate borrow process", "error");
+      try {
+        if (action === "borrow") {
+          if (!openModal(bookId)) {
+            showToast("Could not initiate borrow process", "error");
+          }
         }
+        else if (action === "reserve") await reserveBook(bookId);
+        else if (action === "return") await returnBook(bookId);
+        else if (action === "cancel") await cancelReservation(bookId);
+      } catch (err) {
+        console.error(`${action} error:`, err);
+        showToast(`Error: ${err.message}`, "error");
       }
-      // ... rest of the click handler
-    } catch (err) {
-      console.error(`${action} error:`, err);
-      showToast(`Error: ${err.message}`, "error");
-    }
+    });
   });
-});
 }
 
 // Utility Functions
