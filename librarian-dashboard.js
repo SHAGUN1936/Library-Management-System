@@ -148,12 +148,12 @@ async function loadBorrowedBooks() {
     showToast("Error loading borrowed books: " + error.message, "error");
   }
 }
+
 async function loadReservedBooks() {
   try {
     const q = query(
       collection(db, "books"),
-      where("reservedBy", "!=", []), // This will find books where reservedBy is not empty
-      orderBy("reservedBy") // Need to order by the field we're filtering on
+      where("status", "==", "reserved") // Find books with reserved status
     );
     
     const snapshot = await getDocs(q);
@@ -167,17 +167,23 @@ async function loadReservedBooks() {
 
     for (const docSnap of snapshot.docs) {
       const book = { id: docSnap.id, ...docSnap.data() };
-      const reservers = [];
       
-      // Check if reservedBy exists and is an array
-      if (book.reservedBy && Array.isArray(book.reservedBy)) {
-        for (const userId of book.reservedBy) {
+      // Handle both string and array reservedBy formats
+      const reservers = [];
+      if (book.reservedBy) {
+        const userIds = typeof book.reservedBy === 'string' ? [book.reservedBy] : book.reservedBy;
+        
+        for (const userId of userIds) {
           try {
             const userSnap = await getDoc(doc(db, "users", userId));
-            reservers.push(userSnap.exists() ? userSnap.data().email : userId);
+            if (userSnap.exists()) {
+              reservers.push(userSnap.data().email || userId);
+            } else {
+              reservers.push(userId); // Fallback to user ID if no email
+            }
           } catch (error) {
             console.error(`Error fetching user ${userId}:`, error);
-            reservers.push(userId); // Fallback to just showing the user ID
+            reservers.push(userId); // Fallback to user ID on error
           }
         }
       }
@@ -189,6 +195,7 @@ async function loadReservedBooks() {
     showToast("Error loading reserved books: " + error.message, "error");
   }
 }
+
 
 
 function renderBookCard(book, targetList, additionalInfo = null) {
@@ -253,17 +260,22 @@ function renderBookCard(book, targetList, additionalInfo = null) {
   });
 }
 
+
+
 async function showBookDetails(bookId) {
   try {
     const bookRef = doc(db, "books", bookId);
     const bookSnap = await getDoc(bookRef);
+
     if (!bookSnap.exists()) return showToast("Book not found", "error");
 
     const book = bookSnap.data();
     const detailsContent = document.getElementById("bookDetailsContent");
     detailsContent.innerHTML = "";
+
     document.getElementById("modalBookTitle").textContent = book.title;
 
+    // Basic book info section
     const basicInfo = document.createElement("div");
     basicInfo.className = "book-details-section";
     basicInfo.innerHTML = `
@@ -275,6 +287,7 @@ async function showBookDetails(bookId) {
     `;
     detailsContent.appendChild(basicInfo);
 
+    // Borrowing info section (unchanged)
     if (book.status === "borrowed" && book.borrowedBy) {
       const userSnap = await getDoc(doc(db, "users", book.borrowedBy));
       const userEmail = userSnap.exists() ? userSnap.data().email : book.borrowedBy;
@@ -293,20 +306,61 @@ async function showBookDetails(bookId) {
       detailsContent.appendChild(borrowInfo);
     }
 
-    if (book.reservedBy && book.reservedBy.length > 0) {
+    // Updated Reservation info section
+    if (book.reservedBy) {
       const reservationInfo = document.createElement("div");
       reservationInfo.className = "book-details-section";
-      reservationInfo.innerHTML = `<h3>Reserved By</h3>`;
-      const userChips = document.createElement("div");
+      reservationInfo.innerHTML = `<h3>Reservation Details</h3>`;
+      
+      const userInfoContainer = document.createElement("div");
+      userInfoContainer.className = "user-info-container";
 
-      const chip = document.createElement("span");
-      chip.className = "user-chip";
-      chip.innerHTML = `<i class="fas fa-user"></i> ${book.reservedBy}`;
-      userChips.appendChild(chip);
+      // Handle both string and array formats
+      const userIds = typeof book.reservedBy === 'string' ? [book.reservedBy] : book.reservedBy;
+      
+      for (const userId of userIds) {
+        try {
+          const userSnap = await getDoc(doc(db, "users", userId));
+          if (userSnap.exists()) {
+            const userData = userSnap.data();
+            const userInfo = document.createElement("div");
+            userInfo.className = "user-info";
+            userInfo.innerHTML = `
+              <div class="user-avatar"><i class="fas fa-user"></i></div>
+              <div class="user-details">
+                <div class="user-email">${userData.email || 'No email'}</div>
+                ${userData.name ? `<div class="user-name">${userData.name}</div>` : ''}
+              </div>
+            `;
+            userInfoContainer.appendChild(userInfo);
+          } else {
+            // Fallback if user doesn't exist
+            const userInfo = document.createElement("div");
+            userInfo.className = "user-info";
+            userInfo.innerHTML = `
+              <div class="user-avatar"><i class="fas fa-user"></i></div>
+              <div class="user-details">
+                <div class="user-id">User ID: ${userId}</div>
+              </div>
+            `;
+            userInfoContainer.appendChild(userInfo);
+          }
+        } catch (error) {
+          console.error(`Error fetching user ${userId}:`, error);
+          // Fallback if error occurs
+          const userInfo = document.createElement("div");
+          userInfo.className = "user-info";
+          userInfo.innerHTML = `
+            <div class="user-avatar"><i class="fas fa-user"></i></div>
+            <div class="user-details">
+              <div class="user-id">User ID: ${userId}</div>
+            </div>
+          `;
+          userInfoContainer.appendChild(userInfo);
+        }
+      }
 
-    
-
-      reservationInfo.appendChild(userChips);
+      reservationInfo.appendChild(userInfoContainer);
       detailsContent.appendChild(reservationInfo);
     }
 
@@ -316,7 +370,6 @@ async function showBookDetails(bookId) {
     showToast("Error loading book details", "error");
   }
 }
-
 async function markBookReturned(bookId) {
   try {
     const bookRef = doc(db, "books", bookId);
