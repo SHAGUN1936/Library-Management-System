@@ -1,10 +1,11 @@
 import { firebaseAuth } from "../firebaseConfig.js";
-import { 
-  getFirestore, 
-  collection, 
-  getDocs, 
+import {
+  getFirestore,
+  collection,
+  getDocs,
   addDoc,
-  updateDoc, 
+  updateDoc,
+  deleteDoc,
   doc,
   getDoc,
   query,
@@ -20,14 +21,12 @@ import {
 const db = getFirestore();
 let currentUser = null;
 
-// DOM Elements
 const addBookModal = document.getElementById("addBookModal");
 const bookDetailsModal = document.getElementById("bookDetailsModal");
 const addBookForm = document.getElementById("addBookForm");
 const logoutBtn = document.getElementById("logoutBtn");
 
-// Initialize the dashboard
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener("DOMContentLoaded", () => {
   logoutBtn.addEventListener("click", handleLogout);
   document.getElementById("bookSearch").addEventListener("input", handleBookSearch);
 
@@ -68,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 addBookForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  
+
   const title = document.getElementById("bookTitle").value;
   const author = document.getElementById("bookAuthor").value;
   const price = parseFloat(document.getElementById("bookPrice").value);
@@ -104,7 +103,6 @@ async function loadAllBooks() {
     const q = query(collection(db, "books"), orderBy("title"));
     const snapshot = await getDocs(q);
     const booksList = document.getElementById("allBooksList");
-    
     booksList.innerHTML = "";
 
     if (snapshot.empty) {
@@ -127,7 +125,6 @@ async function loadBorrowedBooks() {
     const q = query(collection(db, "books"), where("status", "==", "borrowed"));
     const snapshot = await getDocs(q);
     const booksList = document.getElementById("borrowedBooksList");
-    
     booksList.innerHTML = "";
 
     if (snapshot.empty) {
@@ -135,7 +132,7 @@ async function loadBorrowedBooks() {
       return;
     }
 
-    snapshot.forEach(async docSnap => {
+    for (const docSnap of snapshot.docs) {
       const book = { id: docSnap.id, ...docSnap.data() };
       let borrowerInfo = "Unknown user";
       if (book.borrowedBy) {
@@ -145,7 +142,7 @@ async function loadBorrowedBooks() {
         }
       }
       renderBookCard(book, "borrowedBooksList", borrowerInfo);
-    });
+    }
   } catch (error) {
     console.error("Error loading borrowed books:", error);
     showToast("Error loading borrowed books: " + error.message, "error");
@@ -157,7 +154,6 @@ async function loadReservedBooks() {
     const q = query(collection(db, "books"));
     const snapshot = await getDocs(q);
     const booksList = document.getElementById("reservedBooksList");
-    
     booksList.innerHTML = "";
 
     const reservedBooks = snapshot.docs.filter(docSnap => {
@@ -229,6 +225,7 @@ function renderBookCard(book, targetList, additionalInfo = null) {
     <div class="book-actions">
       <button class="btn btn-primary" data-book-id="${book.id}" data-action="details"><i class="fas fa-info-circle"></i> Details</button>
       ${book.status === "borrowed" ? `<button class="btn btn-success" data-book-id="${book.id}" data-action="return"><i class="fas fa-undo"></i> Mark Returned</button>` : ''}
+      ${(book.status === "available" || book.status === "reserved") ? `<button class="btn btn-danger" data-book-id="${book.id}" data-action="delete"><i class="fas fa-trash"></i> Delete</button>` : ''}
     </div>
   `;
 
@@ -241,6 +238,7 @@ function renderBookCard(book, targetList, additionalInfo = null) {
 
       if (action === "details") showBookDetails(bookId);
       else if (action === "return") markBookReturned(bookId);
+      else if (action === "delete") deleteBook(bookId);
     });
   });
 }
@@ -249,13 +247,11 @@ async function showBookDetails(bookId) {
   try {
     const bookRef = doc(db, "books", bookId);
     const bookSnap = await getDoc(bookRef);
-
     if (!bookSnap.exists()) return showToast("Book not found", "error");
 
     const book = bookSnap.data();
     const detailsContent = document.getElementById("bookDetailsContent");
     detailsContent.innerHTML = "";
-
     document.getElementById("modalBookTitle").textContent = book.title;
 
     const basicInfo = document.createElement("div");
@@ -293,21 +289,12 @@ async function showBookDetails(bookId) {
       reservationInfo.innerHTML = `<h3>Reserved By</h3>`;
       const userChips = document.createElement("div");
 
-      
       const chip = document.createElement("span");
       chip.className = "user-chip";
       chip.innerHTML = `<i class="fas fa-user"></i> ${book.reservedBy}`;
       userChips.appendChild(chip);
 
-      // for (const userId of book.reservedBy) {
-      //   const userSnap = await getDoc(doc(db, "users", userId));
-      //   const userEmail = userSnap.exists() ? userSnap.data().email : userId;
-
-      //   const chip = document.createElement("span");
-      //   chip.className = "user-chip";
-      //   chip.innerHTML = `<i class="fas fa-user"></i> ${userEmail}`;
-      //   userChips.appendChild(chip);
-      // }
+    
 
       reservationInfo.appendChild(userChips);
       detailsContent.appendChild(reservationInfo);
@@ -335,6 +322,19 @@ async function markBookReturned(bookId) {
   } catch (error) {
     console.error("Error returning book:", error);
     showToast("Error returning book", "error");
+  }
+}
+
+async function deleteBook(bookId) {
+  try {
+    const bookRef = doc(db, "books", bookId);
+    await deleteDoc(bookRef);
+    showToast("Book deleted successfully", "success");
+    loadAllBooks();
+    loadReservedBooks();
+  } catch (error) {
+    console.error("Error deleting book:", error);
+    showToast("Error deleting book", "error");
   }
 }
 
