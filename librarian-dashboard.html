@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Librarian Dashboard</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="librarian-dashboard.css">
+</head>
+<body>
+  <div class="dashboard-container">
+    <header class="dashboard-header">
+      <div class="user-info">
+        <div class="avatar">
+          <i class="fas fa-user-shield"></i>
+        </div>
+        <div>
+          <h1>Librarian Dashboard</h1>
+          <p id="userEmail">Welcome, Librarian!</p>
+        </div>
+      </div>
+      <button id="logoutBtn" class="logout-btn">
+        <i class="fas fa-sign-out-alt"></i> Logout
+      </button>
+    </header>
+
+    <div class="dashboard-content">
+      <div class="action-bar">
+        <button id="addBookBtn" class="btn btn-primary">
+          <i class="fas fa-plus"></i> Add New Book
+        </button>
+        <div class="search-box">
+          <input type="text" id="bookSearch" placeholder="Search books...">
+          <i class="fas fa-search"></i>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="all-books">All Books</button>
+        <button class="tab-btn" data-tab="borrowed-books">Borrowed Books</button>
+        <button class="tab-btn" data-tab="reserved-books">Reserved Books</button>
+      </div>
+
+      <div id="all-books" class="tab-content active">
+        <div id="allBooksList"></div>
+      </div>
+      
+      <div id="borrowed-books" class="tab-content">
+        <div id="borrowedBooksList"></div>
+      </div>
+      
+      <div id="reserved-books" class="tab-content">
+        <div id="reservedBooksList"></div>
+      </div>
+      
+    </div>
+  </div>
+
+  <!-- Add Book Modal -->
+  <div id="addBookModal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn">&times;</span>
+      <h2>Add New Book</h2>
+      <form id="addBookForm">
+        <div class="form-group">
+          <label for="bookTitle">Title</label>
+          <input type="text" id="bookTitle" required>
+        </div>
+        <div class="form-group">
+          <label for="bookAuthor">Author</label>
+          <input type="text" id="bookAuthor" required>
+        </div>
+        <div class="form-group">
+          <label for="bookPrice">Price (₹)</label>
+          <input type="number" id="bookPrice" min="0" step="0.01" required>
+        </div>
+        <div class="form-group">
+          <label for="bookQuantity">Quantity</label>
+          <input type="number" id="bookQuantity" min="1" value="1" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Add Book</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Book Details Modal -->
+  <div id="bookDetailsModal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn">&times;</span>
+      <h2 id="modalBookTitle">Book Details</h2>
+      <div id="bookDetailsContent"></div>
+    </div>
+  </div>
+
+  <script type="module" src="librarian-dashboard.js"></script>
+</body>
+</html>

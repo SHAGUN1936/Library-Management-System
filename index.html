@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Select Role</title>
+  <link rel="stylesheet" href="styles.css" />
+
+</head>
+<body>
+  <h2>Select Your Role</h2>
+  <button id="userBtn">User</button>
+  <button id="librarianBtn">Librarian</button>
+
+  <script>
+    document.getElementById("userBtn").addEventListener("click", () => {
+      localStorage.setItem("role", "user");
+      window.location.href = "login.html";
+    });
+
+    document.getElementById("librarianBtn").addEventListener("click", () => {
+      localStorage.setItem("role", "librarian");
+      window.location.href = "login.html";
+    });
+  </script>
+</body>
+</html>
