@@ -1,4 +1,4 @@
-import { firebaseAuth } from "../firebaseConfig.js";
+import { firebaseAuth } from "../firebase.js";
 import {
   getFirestore,
   collection,
