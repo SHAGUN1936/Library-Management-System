@@ -1,4 +1,4 @@
-import { firebaseAuth } from "./firebaseConfig.js";
+import { firebaseAuth } from "./firebase.js";
 
 import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
